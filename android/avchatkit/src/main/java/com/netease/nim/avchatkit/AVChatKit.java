@@ -215,7 +215,7 @@ public class AVChatKit {
             }
             // 有网络来电打开AVChatActivity
             AVChatProfile.getInstance().setAVChatting(true);
-            AVChatProfile.getInstance().launchActivity(data, userInfoProvider.getUserDisplayName(data.getAccount()), AVChatActivity.FROM_BROADCASTRECEIVER);
+            AVChatProfile.getInstance().launchActivity(data, data.getAccount(), AVChatActivity.FROM_BROADCASTRECEIVER);
         }
     };
 
