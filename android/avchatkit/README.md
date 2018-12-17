@@ -1,160 +1,274 @@
-# AVChatKit 使用说明
 
-## <span id="全局配置项 AVChatOptions">全局配置项 AVChatOptions</span>
+这个库原本fork自[react-native-netease-im](https://github.com/reactnativecomponent/react-native-netease-im), 一开始仅为了满足业务需要, 进行了一些修改, 比如语音播放策略和放开聊天的好友限制等等, 后面又增加了音视频实时通话模块, 导致pro的集成方式与原库大相径庭, 所以如果你已经在项目中集成过react-native-netease-im, 请先把它相关的依赖清除掉.
+毫无疑问, 这个库最大的亮点在于实时通话功能, 但是如果你仅有基础聊天的需求, 不建议使用pro, 建议使用[react-native-netease-im](https://github.com/reactnativecomponent/react-native-netease-im), 缩减app安装包体积.
+使用这个库之前, 强烈建议先阅读一遍云信的官方桥接文档(Android/iOS), 至少阅读一端的文档, 因为即时通信不是一个轻量级功能, 绝非一到两天之内可以搞定, 涉及到的api数量也很多, 所以需要你通读一遍文档, 在了解云信的架构的基础上进行开发.
 
-AVChatKit 组件提供了全局配置类 AVChatOptions，初始化 AVChatKit 时传入 AVChatOptions 对象。
+#### 注意事项: 
+##### 2.普通帐号不要使用5位数，因为5位数设定是系统帐号，尽量使用6位或者6位以上
 
-|类型|AVChatOptions 属性|说明|
-|:---|:---|:---|
-|Class<? extends Activity>|entranceActivity|通知入口|
-|int|notificationIconRes|通知栏icon|
-|void|logout(Context context)|被踢出时，调用的方法|
+## 如何安装
 
-## <span id="初始化">初始化</span>
+### 1.首先安装npm包
 
-在应用的 Application 的 **主进程** 中初始化 AVChatKit。
+```bash
+yarn add react-native-netease-im-pro
+```
+
+### 2.link
+```bash
+react-native link react-native-netease-im-pro
+```
+
+#### 手动link~（如果不能够自动link）
+##### ios
+```
+a.打开XCode's工程中, 右键点击Libraries文件夹 ➜ Add Files to <...>
+b.去node_modules ➜ react-native-netease-im-pro ➜ ios ➜ 选择 RNNeteaseIm.xcodeproj
+c.在工程Build Phases ➜ Link Binary With Libraries中添加libRNNeteaseIm.a
+```
+##### Android
+```
+// file: android/settings.gradle
+...
+
+include ':react-native-netease-im-pro'
+project(':react-native-netease-im-pro').projectDir = new File(settingsDir, '../node_modules/react-native-netease-im-pro/android')
+```
+
+```
+// file: android/app/build.gradle
+...
+
+dependencies {
+    ...
+    compile project(':react-native-netease-im-pro')
+}
+```
+
+`android/app/src/main/java/<你的包名>/MainActivity.java`
+
+```
+import com.netease.im.uikit.permission.MPermission;
+import com.netease.im.RNNeteaseImModule;
+import com.netease.im.ReceiverMsgParser;
+
+public class MainActivity extends ReactActivity {
+
+ ......
+
+  @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
+         if(ReceiverMsgParser.checkOpen(getIntent())){//在后台时处理点击推送消息
+             RNNeteaseImModule.launch = getIntent();
+         }
+     }
+
+ @Override
+ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        MPermission.onRequestPermissionsResult(this, requestCode, permissions, grantResults);
+ }
+ ```
+
+`android/app/src/main/java/<你的包名>/MainApplication.java`中添加如下两行：
 
 ```java
-AVChatOptions avChatOptions = new AVChatOptions(){
+...
+import com.netease.im.RNNeteaseImPackage;  // 在public class MainApplication之前import
+import com.netease.im.IMApplication;
+
+public class MainApplication extends Application implements ReactApplication {
+
+  private final ReactNativeHost mReactNativeHost = new ReactNativeHost(this) {
     @Override
-    public void logout(Context context) {
-        // 主程序登出操作
-    }
-};
-// 点击通知栏，入口Activity
-avChatOptions.entranceActivity = WelcomeActivity.class;
-// 通知栏图标icon
-avChatOptions.notificationIconRes = R.drawable.ic_stat_notify_msg;
-// 初始化 AVChatKit
-AVChatKit.init(avChatOptions);
-```
-
-- 示例
-
-```java
-AVChatOptions avChatOptions = new AVChatOptions(){
-    @Override
-    public void logout(Context context) {
-        MainActivity.logout(context, true);
-    }
-};
-avChatOptions.entranceActivity = WelcomeActivity.class;
-avChatOptions.notificationIconRes = R.drawable.ic_stat_notify_msg;
-AVChatKit.init(avChatOptions);
-
-// 初始化日志系统
-LogHelper.init();
-// 设置用户相关资料提供者
-AVChatKit.setUserInfoProvider(new IUserInfoProvider() {
-    @Override
-    public UserInfo getUserInfo(String account) {
-        return NimUIKit.getUserInfoProvider().getUserInfo(account);
+    protected boolean getUseDeveloperSupport() {
+      return BuildConfig.DEBUG;
     }
 
     @Override
-    public String getUserDisplayName(String account) {
-        return UserInfoHelper.getUserDisplayName(account);
+    protected List<ReactPackage> getPackages() {
+      return Arrays.<ReactPackage>asList(
+          new RNNeteaseImPackage(), // 然后添加这一行
+          new MainReactPackage()
+      );
     }
-});
-// 设置群组数据提供者
-AVChatKit.setTeamDataProvider(new ITeamDataProvider() {
-    @Override
-    public String getDisplayNameWithoutMe(String teamId, String account) {
-        return TeamHelper.getDisplayNameWithoutMe(teamId, account);
+  };
+
+  @Override
+  public ReactNativeHost getReactNativeHost() {
+      return mReactNativeHost;
+  }
+   @Override
+  public void onCreate() {
+    //初始化方法appId以及appKey在小米开放平台获取，小米推送证书名称在网易云信后台设置
+    IMApplication.setDebugAble(BuildConfig.DEBUG);
+    IMApplication.init(this, MainActivity.class,R.drawable.ic_stat_notify_msg,new    IMApplication.MiPushConfig("小米推送证书名称","小米推送appId","小米推送的appKey"));
+   ...
+  }
+}
+```
+
+
+### 3.工程配置
+#### iOS配置
+install with CocoaPods
+```
+pod 'NIMSDK', '5.6.0'
+pod 'CocoaLumberjack', '~> 2.0.0-rc2'
+```
+Run `pod install`
+
+在工程target的`Build Phases->Link Binary with Libraries`中加入`、libsqlite3.0.tbd、libc++.tbd、libz.tbd、CoreTelephony.framework、AVFoundation.framework、CoreMedia.framework、CoreMotion.framework`
+
+
+
+在你工程的`AppDelegate.m`文件中添加如下代码：
+
+```
+...
+#import <NIMSDK/NIMSDK.h>
+#import "NTESSDKConfigDelegate.h"
+@interface AppDelegate ()
+@property (nonatomic,strong) NTESSDKConfigDelegate *sdkConfigDelegate;
+@end
+@implementation AppDelegate
+
+- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
+{
+...
+[self setupNIMSDK];
+[self registerAPNs];
+if (launchOptions) {//未启动时，点击推送消息
+    NSDictionary * remoteNotification = [launchOptions objectForKey:UIApplicationLaunchOptionsRemoteNotificationKey];
+    if (remoteNotification) {
+      [self performSelector:@selector(clickSendObserve:) withObject:remoteNotification afterDelay:0.5];
     }
+  }
+...
+return YES;
+}
+- (void)clickSendObserve:(NSDictionary *)dict{
+  [[NSNotificationCenter defaultCenter]postNotificationName:@"ObservePushNotification" object:@{@"dict":dict,@"type":@"launch"}];
+}
+- (void)setupNIMSDK
+{
+//在注册 NIMSDK appKey 之前先进行配置信息的注册，如是否使用新路径,是否要忽略某些通知，是否需要多端同步未读数
+self.sdkConfigDelegate = [[NTESSDKConfigDelegate alloc] init];
+[[NIMSDKConfig sharedConfig] setDelegate:self.sdkConfigDelegate];
+[[NIMSDKConfig sharedConfig] setShouldSyncUnreadCount:YES];
+//appkey 是应用的标识，不同应用之间的数据（用户、消息、群组等）是完全隔离的。
+//注册APP，请将 NIMSDKAppKey 换成您自己申请的App Key
+[[NIMSDK sharedSDK] registerWithAppID:@"appkey" cerName:@"证书名称"];
+}
 
-    @Override
-    public String getTeamMemberDisplayName(String teamId, String account) {
-        return TeamHelper.getTeamMemberDisplayName(teamId, account);
+#pragma mark - misc
+- (void)registerAPNs
+{
+[[UIApplication sharedApplication] registerForRemoteNotifications];
+UIUserNotificationType types = UIUserNotificationTypeBadge | UIUserNotificationTypeSound | UIUserNotificationTypeAlert;
+UIUserNotificationSettings *settings = [UIUserNotificationSettings settingsForTypes:types categories:nil];
+[[UIApplication sharedApplication] registerUserNotificationSettings:settings];
+}
+
+- (void)application:(UIApplication *)app didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken
+{
+  [[NIMSDK sharedSDK] updateApnsToken:deviceToken];
+}
+//在后台时处理点击推送消息
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo{
+
+  [[NSNotificationCenter defaultCenter]postNotificationName:@"ObservePushNotification" object:@{@"dict":userInfo,@"type":@"background"}];
+}
+- (void)application:(UIApplication *)app didFailToRegisterForRemoteNotificationsWithError:(NSError *)error
+{
+  NSLog(@"fail to get apns token :%@",error);
+}
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+  NSInteger count = [[[NIMSDK sharedSDK] conversationManager] allUnreadCount];
+  [[UIApplication sharedApplication] setApplicationIconBadgeNumber:count];
+}
+```
+
+#### Android配置
+在`android/app/build.gradle`里，defaultConfig栏目下添加如下代码：
+```
+manifestPlaceholders = [
+	// 如果有多项，每一项之间需要用逗号分隔
+    NIM_KEY: "云信的APPID"    //在此修改云信APPID
+]
+```
+在`AndroidManifest.xml`里，添加如下代码：
+```
+< manifest
+
+    ......
+
+    <!-- SDK 权限申明, 第三方 APP 接入时，请将 com.im.demo 替换为自己的包名 -->
+    <!-- 和下面的 uses-permission 一起加入到你的 AndroidManifest 文件中。 -->
+    <permission
+        android:name="com.im.demo.permission.RECEIVE_MSG"
+        android:protectionLevel="signature"/>
+    <!-- 接收 SDK 消息广播权限， 第三方 APP 接入时，请将 com.im.demo 替换为自己的包名 -->
+    <uses-permission android:name="com.im.demo.permission.RECEIVE_MSG"/>
+    <!-- 小米推送 -->
+    <permission
+        android:name="com.im.demo.permission.MIPUSH_RECEIVE"
+        android:protectionLevel="signature"/>
+    <uses-permission android:name="com.im.demo.permission.MIPUSH_RECEIVE"/>
+
+    ......
+    < application
+            ......
+            <!-- 设置你的网易聊天App Key -->
+             <meta-data
+                        android:name="com.netease.nim.appKey"
+                        android:value="App Key" />
+            <!--添加新的 IPC 数据共享机制，替换不安全的多进程读写 SharedPreference-->
+            <provider
+                android:name="com.netease.nimlib.ipc.NIMContentProvider"
+                android:authorities="com.im.demo.ipc.provider"
+                android:exported="false"
+                android:process=":core" />
+
+```
+
+## 如何使用
+
+### 引入包
+
+```
+import {NimSession} from 'react-native-netease-im-pro';
+```
+
+### API
+
+参考[index.js](https://github.com/reactnativecomponent/react-native-netease-im/blob/master/index.js)
+
+#### 监听会话
+```
+NativeAppEventEmitter.addListener("observeRecentContact",(data)=>{
+  console.log(data); //返回会话列表和未读数
+})；
+```
+#### 推送
+```
+//程序运行时获取的推送点击事件
+NativeAppEventEmitter.addListener("observeLaunchPushEvent",(data)=>{
+  console.log(data);
+})；
+//程序后台时获取的推送点击事件
+NativeAppEventEmitter.addListener("observeBackgroundPushEvent",(data)=>{
+  console.log(data); 
+})；
+//推送数据格式
+{
+    ...
+    sessionBody：{
+        sessionId:"",
+        sessionType:"",
+        sessionName:""
     }
-});
+}
+
 ```
 
-AVChatKit 中用到的 Activity 已经在 AVChatKit 工程的 AndroidManifest.xml 文件中注册好，上层 APP 无需再去添加注册。
-
-## <span id="快速使用">快速使用</span>
-
-### <span id="发起点对点音视频通话呼叫">发起点对点音视频通话呼叫</span>
-
-- API 原型
-
-```java
-/**
- * 发起音视频通话呼叫
- * @param context   上下文
- * @param account   被叫方账号
- * @param displayName   被叫方显示名称
- * @param callType      音视频呼叫类型
- * @param source        发起呼叫的来源，参考AVChatActivityEx.FROM_INTERNAL/FROM_BROADCASTRECEIVER
- */
-public static void outgoingCall(Context context, String account, String displayName, int callType, int source);
-```
-
-- 参数介绍
-
-|参数|说明|
-|:---|:---|
-|context   |上下文|
-|account   |被叫方账号|
-|displayName   |被叫方显示名称|
-|callType      |音视频呼叫类型|
-|source        |发起呼叫的来源，参考AVChatActivityEx.FROM_INTERNAL/FROM_BROADCASTRECEIVER|
-
-- 示例
-
-```java
-AVChatKit.outgoingCall(context, "testAccount", "displayName" AVChatType.AUDIO, AVChatActivity.FROM_INTERNAL);
-```
-
-### <span id="发起群组音视频通话呼叫">发起群组音视频通话呼叫</span>
-
--  API 原型
-
-```java
-/**
- * 发起群组音视频通话呼叫
- * @param context   上下文
- * @param receivedCall  是否是接收到的来电
- * @param teamId    team id
- * @param roomId    音视频通话room id
- * @param accounts  音视频通话账号集合
- * @param teamName  群组名称
- */
-public static void outgoingTeamCall(Context context, boolean receivedCall, String teamId, String roomId, ArrayList<String> accounts, String teamName);
-```
-
-- 参数说明
-
-|参数|说明|
-|:---|:---|
-|context   |上下文|
-|receivedCall  |是否是接收到的来电|
-|teamId    |team id|
-|roomId    |音视频通话 room id|
-|accounts  |音视频通话账号集合|
-|teamName  |群组名称|
-
-- 示例
-
-```java
-// 以下参数为示例
-AVChatKit.outgoingTeamCall(context, false, "1111", "roomName", accounts, "teamName");
-```
-
-### <span id="打开网络通话设置界面">打开网络通话设置界面</span>
-
-- API 原型
-
-```java
-/**
- * 打开网络通话设置界面
- * @param context   上下文
- */
-public static void startAVChatSettings(Context context);
-```
-
-- 示例
-
-```java
-AVChatKit.startAVChatSettings(SettingsActivity.this);
-```

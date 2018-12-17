@@ -1242,31 +1242,36 @@
 }
 //判断是不是好友
 - (BOOL)isFriendToSendMessage:(NIMMessage *)message{
-    if (_session.sessionType == NIMSessionTypeP2P) {//点对点
-        NSString *strSessionId = _session.sessionId;
-        if ([[NIMSDK sharedSDK].userManager isMyFriend:strSessionId]) {//判断是否为自己好友
-            return YES;
-        }else{
-            message.localExt = @{@"isFriend":@"NO"};
-            [[NIMSDK sharedSDK].conversationManager saveMessage:message forSession:_session completion:nil];
-            NSString *strSessionName = @"";
-            NIMUser *user = [[NIMSDK sharedSDK].userManager userInfo:strSessionId];
-            if ([user.alias length]) {
-                strSessionName = user.alias;
-            }else{
-                NIMUserInfo *userInfo = user.userInfo;
-                strSessionName = userInfo.nickName;
-            }
-            
-            NSString * tip = [NSString stringWithFormat:@"%@开启了朋友验证，你还不是他（她）朋友。请先发送朋友验证请求，对方验证通过后，才能聊天。发送朋友验证",strSessionName];
-            NIMMessage *tipMessage = [self msgWithTip:tip];
-            tipMessage.timestamp = message.timestamp+1;
-            [[NIMSDK sharedSDK].conversationManager saveMessage:tipMessage forSession:_session completion:nil];
-            return NO;
-        }
-    }else{
+
+        /*
+          if (_session.sessionType == NIMSessionTypeP2P) {//点对点
+                 NSString *strSessionId = _session.sessionId;
+                 if ([[NIMSDK sharedSDK].userManager isMyFriend:strSessionId]) {//判断是否为自己好友
+                     return YES;
+                 }else{
+                     message.localExt = @{@"isFriend":@"NO"};
+                     [[NIMSDK sharedSDK].conversationManager saveMessage:message forSession:_session completion:nil];
+                     NSString *strSessionName = @"";
+                     NIMUser *user = [[NIMSDK sharedSDK].userManager userInfo:strSessionId];
+                     if ([user.alias length]) {
+                         strSessionName = user.alias;
+                     }else{
+                         NIMUserInfo *userInfo = user.userInfo;
+                         strSessionName = userInfo.nickName;
+                     }
+
+                     NSString * tip = [NSString stringWithFormat:@"%@开启了朋友验证，你还不是他（她）朋友。请先发送朋友验证请求，对方验证通过后，才能聊天。发送朋友验证",strSessionName];
+                     NIMMessage *tipMessage = [self msgWithTip:tip];
+                     tipMessage.timestamp = message.timestamp+1;
+                     [[NIMSDK sharedSDK].conversationManager saveMessage:tipMessage forSession:_session completion:nil];
+                     return NO;
+                 }
+             }else{
+                 return YES;
+             }
+        */
         return YES;
-    }
+
 }
 
 @end

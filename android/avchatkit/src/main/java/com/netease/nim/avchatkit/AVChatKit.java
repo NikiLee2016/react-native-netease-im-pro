@@ -8,6 +8,7 @@ import android.util.SparseArray;
 
 import com.netease.nim.avchatkit.activity.AVChatActivity;
 import com.netease.nim.avchatkit.activity.AVChatSettingsActivity;
+import com.netease.nim.avchatkit.cache.UserInfoCache;
 import com.netease.nim.avchatkit.common.log.ILogUtil;
 import com.netease.nim.avchatkit.common.log.LogUtil;
 import com.netease.nim.avchatkit.config.AVChatOptions;
@@ -15,13 +16,13 @@ import com.netease.nim.avchatkit.model.ITeamDataProvider;
 import com.netease.nim.avchatkit.model.IUserInfoProvider;
 import com.netease.nim.avchatkit.receiver.PhoneCallStateObserver;
 import com.netease.nim.avchatkit.teamavchat.activity.TeamAVChatActivity;
-import com.netease.nimlib.sdk.NIMClient;
 import com.netease.nimlib.sdk.Observer;
-import com.netease.nimlib.sdk.SDKOptions;
+import com.netease.nimlib.sdk.RequestCallback;
 import com.netease.nimlib.sdk.auth.LoginInfo;
 import com.netease.nimlib.sdk.avchat.AVChatManager;
 import com.netease.nimlib.sdk.avchat.constant.AVChatControlCommand;
 import com.netease.nimlib.sdk.avchat.model.AVChatData;
+import com.netease.nimlib.sdk.uinfo.model.NimUserInfo;
 import com.netease.nimlib.sdk.uinfo.model.UserInfo;
 
 import java.util.ArrayList;
@@ -213,9 +214,25 @@ public class AVChatKit {
                 AVChatManager.getInstance().sendControlCommand(data.getChatId(), AVChatControlCommand.BUSY, null);
                 return;
             }
-            // 有网络来电打开AVChatActivity
-            AVChatProfile.getInstance().setAVChatting(true);
-            AVChatProfile.getInstance().launchActivity(data, data.getAccount(), AVChatActivity.FROM_BROADCASTRECEIVER);
+            UserInfoCache.getUserInfoFromRemote(data.getAccount(), new RequestCallback<NimUserInfo>() {
+                @Override
+                public void onSuccess(NimUserInfo param) {
+                    // 有网络来电打开AVChatActivity
+                   // Log.i("dddddddddddd", "name: " + param.getName());
+                    AVChatProfile.getInstance().setAVChatting(true);
+                    AVChatProfile.getInstance().launchActivity(data, param.getName(), AVChatActivity.FROM_BROADCASTRECEIVER);
+                }
+
+                @Override
+                public void onFailed(int code) {
+
+                }
+
+                @Override
+                public void onException(Throwable exception) {
+
+                }
+            });
         }
     };
 
